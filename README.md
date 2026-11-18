@@ -1,49 +1,24 @@
-# On-phone AVR compiler (Step 3)
+# CircuitShala: compiler build scripts and source offer
 
-The app compiles the student's sketch on the phone, offline:
+[CircuitShala](https://circuitshala-arduino-lab.web.app) is an Android app for students that simulates Arduino circuits and compiles Arduino code on the phone. This repository holds what the open-source licences ask us to publish for the compiler that ships inside the app. It does **not** contain the app's own code.
 
-```
-sketch.ino ─(Dart: ino_preprocessor)→ sketch.cpp ─cc1plus→ sketch.s ─as→ sketch.o
-  ─ld (+ core.a, avr-libc, libgcc)→ sketch.elf ─(Dart: elf_to_hex)→ HEX → simulator
-```
+## What the app ships
 
-What ships in the APK:
+| Program | Version | Licence | Official source |
+|---|---|---|---|
+| GCC (cc1plus, C++ compiler for AVR) | 14.2.0 | GPL-3.0 with the GCC Runtime Library Exception | https://ftp.gnu.org/gnu/gcc/gcc-14.2.0/ |
+| GNU Binutils (as, ld) | 2.43 | GPL-3.0 | https://ftp.gnu.org/gnu/binutils/ |
+| GMP, MPFR, MPC (built into GCC) | 6.3.0, 4.2.1, 1.3.1 | LGPL-3.0 | https://ftp.gnu.org/gnu/gmp/, /mpfr/, /mpc/ |
+| avr-libc | 2.2.1 | BSD-style | https://github.com/avrdudes/avr-libc |
+| ArduinoCore-avr | 1.8.6 | LGPL-2.1 | https://github.com/arduino/ArduinoCore-avr |
+| LiquidCrystal, Servo, Keypad, DHT sensor library | see `libraries/README.md` | LGPL-2.1, LGPL-2.1, GPL-3.0, MIT | copies in `libraries/` |
 
-| File | What | Size |
-|---|---|---|
-| `android/app/src/main/jniLibs/arm64-v8a/libavr_cc1plus.so` | GCC 14.2 C++ compiler for AVR, built to run on Android | 24.5 MB |
-| `.../libavr_as.so`, `.../libavr_ld.so` | GNU as / ld 2.43 for AVR | 1.2 + 1.4 MB |
-| `assets/toolchain/avr-sdk.tar.gz` | headers (gcc, avr-libc for the ATmega328P, Arduino core), `core.a` (Arduino core 1.8.6, precompiled without LTO), avr-libc/libgcc libraries, linker script | 0.5 MB (3.2 MB unpacked) |
+The programs are the **unmodified official releases**, only cross-compiled to run on Android (arm64-v8a, armeabi-v7a). No patches are applied.
 
-The programs are named `lib*.so` because Android only lets an app run programs
-from its native library folder; `useLegacyPackaging` in `build.gradle.kts` makes
-Android unpack them as real files. The SDK is unpacked once to the app's support
-folder (`NativeSketchCompiler.sdkVersion` forces a fresh unpack after updates).
+## Rebuild them
 
-## Rebuilding
-
-Sources (official releases): gcc-14.2.0, binutils-2.43, gmp-6.3.0, mpfr-4.2.1,
-mpc-1.3.1 (ftp.gnu.org), avr-libc-2.2.1 (github.com/avrdudes/avr-libc),
-ArduinoCore-avr 1.8.6 (github.com/arduino/ArduinoCore-avr). Put the archives in
-`<work>/src`; the work folder path must not contain spaces (GNU configure).
-
-```bash
-tool/toolchain/build_toolchain.sh ~/circuitlab-toolchain-build mac avrlibc android-arm64   # ~40 min
-tool/toolchain/build_core.sh ~/circuitlab-toolchain-build/mac ~/circuitlab-toolchain-build/src/ArduinoCore-avr-1.8.6 ~/circuitlab-toolchain-build/probe
-tool/toolchain/make_sdk.sh ~/circuitlab-toolchain-build/mac ~/circuitlab-toolchain-build/src/ArduinoCore-avr-1.8.6 ~/circuitlab-toolchain-build/probe/core.a ~/circuitlab-toolchain-build/sdk
-tool/toolchain/install_into_app.sh ~/circuitlab-toolchain-build          # run from the app folder
-```
-
-Notes: GCC needs `--enable-host-pie` for Android (otherwise lld rejects absolute
-relocations); bundled zlib needs a one-line fix for new macOS SDKs (done by the
-script); `makeinfo` is not needed (`MAKEINFO=true`).
-
-32-bit ARM phones: `android-armv7` stage (built and shipped under jniLibs/armeabi-v7a). Add `android-x86_64` to the build for x86 emulators / Chromebooks. Phones without
-a shipped compiler fall back to the bundled examples, and the board still powers on.
+`build_toolchain.sh`, `build_core.sh`, `make_sdk.sh` and `install_into_app.sh` are the exact scripts used. See `BUILD.md` for the steps (download the archives above into a work folder, run the scripts with the Android NDK).
 
 ## Licences
 
-GCC and GNU binutils are GPL-3.0 (GCC's runtime library exception covers
-libgcc); avr-libc is BSD-style; the Arduino AVR core is LGPL-2.1. When the app
-is distributed, the exact sources above (and these build scripts) must be
-offered with it, e.g. by publishing them next to the release.
+Each component keeps its own licence; the full texts are in the official source archives linked above and in `libraries/*/LICENSE*`. If you think something is missing from this offer, please open an issue in this repository.
